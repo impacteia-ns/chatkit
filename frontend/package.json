@@ -2,16 +2,17 @@
   "name": "managed-chatkit-frontend",
   "version": "0.1.0",
   "private": true,
+    "engines": {
+    "node": ">=20.19.0"
+  },
+
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
     "lint": "eslint . --ext ts,tsx --max-warnings=0"
-  },
-  "engines": {
-    "node": ">=18.18",
-    "npm": ">=9"
+  
   },
   "dependencies": {
     "@openai/chatkit-react": ">=1.1.1 <2.0.0",
