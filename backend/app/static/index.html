@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Atendimento Odontológico</title>
+  <style>
+    :root{--bg:#f6f8fb;--card:#fff;--primary:#4f7cff;--secondary:#00c2a8;--text:#1f2937;--muted:#6b7280}
+    *{box-sizing:border-box}
+    body{margin:0;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto;background:linear-gradient(180deg,#eef2ff,var(--bg));color:var(--text);display:flex;justify-content:center;padding:32px}
+    .app{width:100%;max-width:720px}
+    header{display:flex;align-items:center;gap:12px;margin-bottom:24px}
+    .logo{width:56px;height:56px;border-radius:16px;background:linear-gradient(135deg,var(--primary),var(--secondary));display:flex;align-items:center;justify-content:center;font-size:28px;color:#fff;box-shadow:0 10px 30px rgba(0,0,0,.15)}
+    h1{font-size:22px;margin:0}
+    .subtitle{font-size:14px;color:var(--muted)}
+    .card{background:var(--card);border-radius:20px;padding:20px;box-shadow:0 20px 40px rgba(0,0,0,.08);margin-bottom:16px}
+    textarea{width:100%;min-height:120px;resize:none;border-radius:14px;border:1px solid #e5e7eb;padding:14px;font-size:15px;outline:none}
+    textarea:focus{border-color:var(--primary)}
+    .actions{display:flex;gap:12px;margin-top:12px}
+    button{flex:1;border:none;border-radius:14px;padding:14px;font-size:15px;font-weight:600;cursor:pointer}
+    .primary{background:var(--primary);color:#fff;box-shadow:0 10px 20px rgba(79,124,255,.3)}
+    .secondary{background:#e5f7f4;color:#047857}
+    .chat{background:#0f172a;color:#e5e7eb;border-radius:16px;padding:16px;white-space:pre-wrap;min-height:120px;font-size:14px}
+    footer{text-align:center;font-size:12px;color:var(--muted);margin-top:8px}
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <div class="logo">🦷</div>
+      <div>
+        <h1>Atendimento Odontológico</h1>
+        <div class="subtitle">Canal de atendimento digital</div>
+      </div>
+    </header>
+
+    <div class="card">
+      <textarea id="msg" placeholder="Digite sua mensagem..."></textarea>
+      <div class="actions">
+        <button class="secondary" id="btnHealth">Verificar conexão</button>
+        <button class="primary" id="btnSend">Enviar</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="chat" id="log">Aguardando resposta…</div>
+    </div>
+
+    <footer>Ambiente de teste • Atendimento automatizado</footer>
+  </div>
+
+  <script>
+    const logEl = document.getElementById('log');
+    const msgEl = document.getElementById('msg');
+
+    function log(x) {
+      logEl.textContent = (typeof x === 'string') ? x : JSON.stringify(x, null, 2);
+    }
+
+    document.getElementById('btnHealth').addEventListener('click', async () => {
+      try {
+        log("Verificando conexão...");
+        const r = await fetch('/health');
+        const data = await r.json();
+        log(data);
+      } catch (e) {
+        log("Erro de conexão");
+      }
+    });
+
+    document.getElementById('btnSend').addEventListener('click', async () => {
+      try {
+        log("Digitando...");
+        const r = await fetch('/api/create-session', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message: msgEl.value || "Olá" })
+        });
+        const data = await r.json();
+        log(data);
+      } catch (e) {
+        log("Erro ao enviar mensagem");
+      }
+    });
+  </script>
+</body>
+</html>
