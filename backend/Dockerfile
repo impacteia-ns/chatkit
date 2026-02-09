@@ -9,7 +9,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 # Copia arquivos de dependências primeiro (para cache)
 COPY pyproject.toml ./
-COPY managed_chatkit_backend.egg-info ./managed_chatkit_backend.egg-info
 
 # Instala o projeto (usa pyproject)
 RUN pip install --no-cache-dir -U pip && pip install --no-cache-dir .
