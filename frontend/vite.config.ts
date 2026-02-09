@@ -8,6 +8,7 @@ export default defineConfig({
   // Allow env files to live one level above the frontend directory
   envDir: path.resolve(__dirname, ".."),
   plugins: [react()],
+  base: "/", 
   server: {
     port: 3000,
     host: "0.0.0.0",
