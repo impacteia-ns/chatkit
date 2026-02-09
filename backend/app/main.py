@@ -12,6 +12,7 @@ from typing import Any, Mapping
 
 import httpx
 from fastapi import FastAPI, Request
+from pathlib import Path
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -22,11 +23,14 @@ SESSION_COOKIE_NAME = "chatkit_session_id"
 SESSION_COOKIE_MAX_AGE_SECONDS = 60 * 60 * 24 * 30  # 30 days
 
 app = FastAPI(title="Managed ChatKit Session API")
-app.mount("/static", StaticFiles(directory="app/static"), name="static")
+BASE_DIR = Path(__file__).resolve().parent
+STATIC_DIR = BASE_DIR / "static"
+
+app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
 @app.get("/")
 def home():
-    return FileResponse("app/static/index.html")
+    return FileResponse(str(STATIC_DIR / "index.html"))
 
 app.add_middleware(
     CORSMiddleware,
