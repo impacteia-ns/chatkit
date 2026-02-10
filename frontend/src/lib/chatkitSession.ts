@@ -11,7 +11,7 @@ export const workflowId = (() => {
 
 export function createClientSecretFetcher(
   workflow: string,
-  endpoint = "/api/create-session"
+  endpoint = `${import.meta.env.VITE_API_URL}/api/create-session`
 ) {
   return async (currentSecret: string | null) => {
     if (currentSecret) return currentSecret;
@@ -19,7 +19,7 @@ export function createClientSecretFetcher(
     const response = await fetch(endpoint, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ workflow: { id: workflow } }),
+      body:JSON.stringify({ workflow_id: workflow }),
     });
 
     const payload = (await response.json().catch(() => ({}))) as {
