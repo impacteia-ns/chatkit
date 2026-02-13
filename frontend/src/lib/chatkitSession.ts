@@ -1,5 +1,7 @@
 const readEnvString = (value: unknown): string | undefined =>
   typeof value === "string" && value.trim() ? value.trim() : undefined;
+export const chatkitApiBase =
+  readEnvString(import.meta.env.VITE_CHATKIT_API_BASE) ?? "";
 
 export const workflowId = (() => {
   const id = readEnvString(import.meta.env.VITE_CHATKIT_WORKFLOW_ID);
