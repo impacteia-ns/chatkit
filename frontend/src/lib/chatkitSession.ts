@@ -11,7 +11,8 @@ export const workflowId = (() => {
 
 export function createClientSecretFetcher(
   workflow: string,
-  endpoint = `${import.meta.env.VITE_API_URL}/api/create-session`
+endpoint = "/api/create-session"
+
 ) {
   return async (currentSecret: string | null) => {
     if (currentSecret) return currentSecret;
