@@ -79,6 +79,20 @@ async def create_session(request: Request) -> JSONResponse:
             502,
             cookie_value,
         )
+@app.post("/datacrazy/log")
+async def datacrazy_log(payload: dict):
+    datacrazy_token = os.getenv("DATACRAZY_API_TOKEN")
+
+    if not datacrazy_token:
+        return JSONResponse(
+            status_code=500,
+            content={"error": "DATACRAZY_API_TOKEN não configurado"}
+        )
+
+    return {
+        "status": "ok",
+        "received": payload
+    }
 
     payload = parse_json(upstream)
     if not upstream.is_success:
