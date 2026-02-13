@@ -11,6 +11,7 @@ import uuid
 from typing import Any, Mapping
 
 import httpx
+import requests
 from fastapi import FastAPI, Request
 from pathlib import Path
 from fastapi.staticfiles import StaticFiles
@@ -178,3 +179,21 @@ def parse_json(response: httpx.Response) -> Mapping[str, Any]:
         return parsed if isinstance(parsed, Mapping) else {}
     except (json.JSONDecodeError, httpx.DecodingError):
         return {}
+   # fim do arquivo
+# nenhuma indentação antes
+
+@app.post("/datacrazy/log")
+async def datacrazy_log(payload: dict):
+    datacrazy_token = os.getenv("DATACRAZY_API_TOKEN")
+
+    if not datacrazy_token:
+        return JSONResponse(
+            status_code=500,
+            content={"error": "DATACRAZY_API_TOKEN não configurado"}
+        )
+
+    return {
+        "status": "ok",
+        "received": payload
+    }
+
