@@ -79,6 +79,51 @@ async def create_session(request: Request) -> JSONResponse:
             502,
             cookie_value,
         )
+# ---------- CHATKIT PROXY (evita o frontend chamar a OpenAI direto) ----------
+
+@app.post("/v1/chatkit/conversation")
+async def proxy_chatkit_conversation(request: Request):
+    body = await request.json()
+
+    auth = request.headers.get("authorization")
+    if not auth:
+        return JSONResponse(status_code=400, content={"error": "Missing Authorization header"})
+
+    async with httpx.AsyncClient(timeout=60) as client:
+        upstream = await client.post(
+            "https://api.openai.com/v1/chatkit/conversation",
+            headers={
+                "authorization": auth,
+                "content-type": "application/json",
+                "OpenAI-Beta": "chatkit-beta=v1",
+            },
+            json=body,
+        )
+
+    return JSONResponse(status_code=upstream.status_code, content=upstream.json())
+
+
+@app.post("/v1/chatkit/domain_keys/verify_hosted")
+async def proxy_verify_hosted(request: Request):
+    body = await request.json()
+
+    auth = request.headers.get("authorization")
+    if not auth:
+        return JSONResponse(status_code=400, content={"error": "Missing Authorization header"})
+
+    async with httpx.AsyncClient(timeout=60) as client:
+        upstream = await client.post(
+            "https://api.openai.com/v1/chatkit/domain_keys/verify_hosted",
+            headers={
+                "authorization": auth,
+                "content-type": "application/json",
+                "OpenAI-Beta": "chatkit-beta=v1",
+            },
+            json=body,
+        )
+
+    return JSONResponse(status_code=upstream.status_code, content=upstream.json())
+
 @app.post("/datacrazy/log")
 async def datacrazy_log(payload: dict):
     datacrazy_token = os.getenv("DATACRAZY_API_TOKEN")
