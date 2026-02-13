@@ -11,7 +11,7 @@ export const workflowId = (() => {
 
 export function createClientSecretFetcher(
   workflow: string,
-endpoint = "/api/create-session"
+endpoint = "https://chatkit-production-113e.up.railway.app/api/create-session"
 
 ) {
   return async (currentSecret: string | null) => {
