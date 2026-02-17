@@ -197,20 +197,23 @@ TOOLS = [
 
 @app.get("/.well-known/mcp.json")
 async def mcp_well_known():
-    # Helpful for humans; scanner uses /mcp JSON-RPC, but leaving this is fine.
     return {
         "schema_version": "v1",
-        "name": MCP_SERVER_NAME,
+        "name": "Impacte IA MCP",
         "description": "MCP server mínimo para validação do ChatGPT Apps",
         "tools": [
             {
-                "name": t["name"],
-                "description": t["description"],
-                "input_schema": {"type": "object", "properties": {}, "required": []},
+                "name": "health_check",
+                "description": "Verifica se o servidor MCP está ativo",
+                "input_schema": {
+                    "type": "object",
+                    "properties": {},
+                    "required": []
+                }
             }
-            for t in TOOLS
-        ],
+        ]
     }
+
 
 
 @app.post("/mcp")
