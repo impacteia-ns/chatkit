@@ -229,19 +229,26 @@ async def mcp_root():
 @app.post("/mcp/execute")
 async def mcp_execute(payload: dict = Body(...)):
     tool = payload.get("tool") or payload.get("name")
-    arguments = payload.get("arguments", {})  # pode vir vazio
 
     if tool == "health_check":
         return {
             "content": [
-                {"type": "text", "text": "MCP server is running"}
+                {
+                    "type": "text",
+                    "text": "MCP server is running"
+                }
             ]
         }
 
-    return JSONResponse(
-        status_code=404,
-        content={"error": f"Tool '{tool}' not found"},
-    )
+    return {
+        "content": [
+            {
+                "type": "text",
+                "text": f"Tool '{tool}' not found"
+            }
+        ]
+    }
+
 
 
 
