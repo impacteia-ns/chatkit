@@ -225,10 +225,10 @@ async def mcp_well_known():
 async def mcp_root():
     return MCP_SCHEMA
 
-
 @app.post("/mcp/execute")
 async def mcp_execute(payload: dict = Body(...)):
-    tool = payload.get("tool") or payload.get("name")
+    tool = payload.get("name") or payload.get("tool")
+    arguments = payload.get("arguments", {})
 
     if tool == "health_check":
         return {
@@ -248,6 +248,7 @@ async def mcp_execute(payload: dict = Body(...)):
             }
         ]
     }
+
 
 
 
