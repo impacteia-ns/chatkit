@@ -2,7 +2,7 @@
 FastAPI entrypoint for exchanging workflow ids for ChatKit client secrets.
 Also hosts:
 - OpenAI Apps domain verification endpoint
-- Minimal MCP endpoints for ChatGPT Apps tool scanning
+- Minimal MCP endpoint for ChatGPT Apps tool scanning (JSON-RPC over HTTP)
 - Optional DataCrazy logging endpoint (stub)
 """
 
@@ -12,11 +12,11 @@ import json
 import os
 import uuid
 from pathlib import Path
-from typing import Any, Mapping
+from typing import Any, Mapping, Optional
 
 import httpx
 from dotenv import load_dotenv
-from fastapi import Body, FastAPI, Request
+from fastapi import Body, FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse
 from fastapi.staticfiles import StaticFiles
@@ -38,6 +38,7 @@ app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
 @app.get("/")
 def home():
+    # Isso é NORMAL: seu backend está hospedando uma página (index.html) também.
     return FileResponse(str(STATIC_DIR / "index.html"))
 
 
@@ -93,11 +94,7 @@ async def create_session(request: Request) -> JSONResponse:
                 json={"workflow": {"id": workflow_id}, "user": user_id},
             )
     except httpx.RequestError as error:
-        return respond(
-            {"error": f"Failed to reach ChatKit API: {error}"},
-            502,
-            cookie_value,
-        )
+        return respond({"error": f"Failed to reach ChatKit API: {error}"}, 502, cookie_value)
 
     payload = parse_json(upstream)
 
@@ -112,11 +109,7 @@ async def create_session(request: Request) -> JSONResponse:
     if not client_secret:
         return respond({"error": "Missing client secret in response"}, 502, cookie_value)
 
-    return respond(
-        {"client_secret": client_secret, "expires_after": expires_after},
-        200,
-        cookie_value,
-    )
+    return respond({"client_secret": client_secret, "expires_after": expires_after}, 200, cookie_value)
 
 
 # -------------------- ChatKit proxy (avoid browser calling OpenAI directly) --------------------
@@ -140,7 +133,6 @@ async def proxy_chatkit_conversation(request: Request):
             json=body,
         )
 
-    # If upstream isn't JSON, this would throw; keep safe:
     try:
         data = upstream.json()
     except Exception:
@@ -182,75 +174,136 @@ async def proxy_verify_hosted(request: Request):
 async def datacrazy_log(payload: dict):
     datacrazy_token = os.getenv("DATACRAZY_API_TOKEN")
     if not datacrazy_token:
-        return JSONResponse(
-            status_code=500,
-            content={"error": "DATACRAZY_API_TOKEN não configurado"},
-        )
+        return JSONResponse(status_code=500, content={"error": "DATACRAZY_API_TOKEN não configurado"})
 
-    # Aqui você faria o POST real para a API do DataCrazy.
-    # Por enquanto, só confirma o recebimento.
-    return JSONResponse(
-        status_code=200,
-        content={"status": "ok", "received": payload},
-    )
+    return JSONResponse(status_code=200, content={"status": "ok", "received": payload})
 
 
-# -------------------- MCP (for ChatGPT Apps tool scan) --------------------
+# -------------------- MCP (JSON-RPC over HTTP) --------------------
+# IMPORTANT: ChatGPT Apps "Scan Tools" expects MCP protocol (JSON-RPC) at the MCP Server URL.
+# You must use MCP Server URL ending with /mcp (not just the domain).
 
-MCP_SCHEMA: dict[str, Any] = {
-    "schema_version": "v1",
-    "name": "Impacte IA MCP",
-    "description": "MCP server mínimo para validação do ChatGPT Apps",
-    "tools": [
-        {
-            "name": "health_check",
-            "description": "Verifica se o servidor MCP está ativo",
-            "input_schema": {
-                "type": "object",
-                "properties": {},
-                "required": [],
-            },
-        }
-    ],
-}
+MCP_SERVER_NAME = "Impacte IA MCP"
+MCP_SERVER_VERSION = "1.0.0"
+
+TOOLS = [
+    {
+        "name": "health_check",
+        "description": "Verifica se o servidor MCP está ativo",
+        "inputSchema": {"type": "object", "properties": {}, "required": []},
+    }
+]
 
 
 @app.get("/.well-known/mcp.json")
 async def mcp_well_known():
-    return MCP_SCHEMA
-
-
-# Debug endpoint (optional)
-@app.get("/mcp")
-async def mcp_root():
-    return MCP_SCHEMA
-
-@app.post("/mcp/execute")
-async def mcp_execute(payload: dict = Body(...)):
-    tool = payload.get("name") or payload.get("tool")
-    arguments = payload.get("arguments", {})
-
-    if tool == "health_check":
-        return {
-            "content": [
-                {
-                    "type": "text",
-                    "text": "MCP server is running"
-                }
-            ]
-        }
-
+    # Helpful for humans; scanner uses /mcp JSON-RPC, but leaving this is fine.
     return {
-        "content": [
+        "schema_version": "v1",
+        "name": MCP_SERVER_NAME,
+        "description": "MCP server mínimo para validação do ChatGPT Apps",
+        "tools": [
             {
-                "type": "text",
-                "text": f"Tool '{tool}' not found"
+                "name": t["name"],
+                "description": t["description"],
+                "input_schema": {"type": "object", "properties": {}, "required": []},
             }
-        ]
+            for t in TOOLS
+        ],
     }
 
 
+@app.post("/mcp")
+async def mcp_http(request: Request):
+    """
+    Minimal MCP over HTTP using JSON-RPC 2.0.
+    Supports:
+      - initialize
+      - tools/list
+      - tools/call
+    """
+    body = await request.json()
 
+    # JSON-RPC can be a single object or a batch list
+    if isinstance(body, list):
+        results = []
+        for item in body:
+            resp = _handle_jsonrpc(item)
+            if resp is not None:
+                results.append(resp)
+        return results
+
+    resp = _handle_jsonrpc(body)
+    # Notifications (no id) should return 204
+    if resp is None:
+        return Response(status_code=204)
+    return resp
+
+
+@app.get("/mcp")
+async def mcp_get_debug():
+    # Some scanners probe GET. Return basic info.
+    return {"status": "ok", "server": MCP_SERVER_NAME, "version": MCP_SERVER_VERSION}
+
+
+def _handle_jsonrpc(msg: Any) -> Optional[dict]:
+    if not isinstance(msg, dict):
+        return {"jsonrpc": "2.0", "id": None, "error": {"code": -32600, "message": "Invalid Request"}}
+
+    jsonrpc = msg.get("jsonrpc")
+    method = msg.get("method")
+    msg_id = msg.get("id", None)
+    params = msg.get("params") or {}
+
+    # Notification: no "id" -> return None (no response body)
+    is_notification = "id" not in msg
+
+    if jsonrpc != "2.0" or not isinstance(method, str):
+        if is_notification:
+            return None
+        return {"jsonrpc": "2.0", "id": msg_id, "error": {"code": -32600, "message": "Invalid Request"}}
+
+    # ---- MCP methods ----
+    if method == "initialize":
+        result = {
+            "protocolVersion": "2024-11-05",
+            "capabilities": {"tools": {}},
+            "serverInfo": {"name": MCP_SERVER_NAME, "version": MCP_SERVER_VERSION},
+        }
+        if is_notification:
+            return None
+        return {"jsonrpc": "2.0", "id": msg_id, "result": result}
+
+    if method == "tools/list":
+        result = {"tools": TOOLS}
+        if is_notification:
+            return None
+        return {"jsonrpc": "2.0", "id": msg_id, "result": result}
+
+    if method == "tools/call":
+        name = params.get("name")
+        arguments = params.get("arguments") or {}
+
+        if name == "health_check":
+            result = {
+                "content": [
+                    {"type": "text", "text": "MCP server is running"},
+                ]
+            }
+            if is_notification:
+                return None
+            return {"jsonrpc": "2.0", "id": msg_id, "result": result}
+
+        # Unknown tool
+        err = {"code": -32601, "message": f"Tool '{name}' not found"}
+        if is_notification:
+            return None
+        return {"jsonrpc": "2.0", "id": msg_id, "error": err}
+
+    # Unknown method
+    if is_notification:
+        return None
+    return {"jsonrpc": "2.0", "id": msg_id, "error": {"code": -32601, "message": "Method not found"}}
 
 
 # -------------------- helpers --------------------
