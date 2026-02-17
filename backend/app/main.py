@@ -228,19 +228,21 @@ async def mcp_root():
 
 @app.post("/mcp/execute")
 async def mcp_execute(payload: dict = Body(...)):
-    """
-    Minimal execute endpoint.
-    Accepts payload like:
-      {"name":"health_check","arguments":{...}}
-    """
-    tool_name = payload.get("name")
-    if tool_name == "health_check":
-        return {"status": "ok", "message": "MCP server is running"}
+    tool = payload.get("tool") or payload.get("name")
+    arguments = payload.get("arguments", {})  # pode vir vazio
+
+    if tool == "health_check":
+        return {
+            "content": [
+                {"type": "text", "text": "MCP server is running"}
+            ]
+        }
 
     return JSONResponse(
         status_code=404,
-        content={"error": f"Tool '{tool_name}' not found"},
+        content={"error": f"Tool '{tool}' not found"},
     )
+
 
 
 # -------------------- helpers --------------------
