@@ -261,4 +261,13 @@ async def datacrazy_log(payload: dict):
         "status": "ok",
         "received": payload
     }
+from fastapi.responses import PlainTextResponse
 
+@app.get("/mcp")
+async def mcp_root():
+    return {
+        "schema_version": "v1",
+        "name": "Impacte IA MCP",
+        "description": "MCP server mínimo para validação do ChatGPT Apps",
+        "tools": []
+    }
