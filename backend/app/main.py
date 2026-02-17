@@ -46,6 +46,12 @@ app.add_middleware(
 async def health() -> Mapping[str, str]:
     return {"status": "ok"}
 
+from fastapi.responses import PlainTextResponse
+
+@app.get("/.well-known/openai-apps-challenge")
+async def openai_apps_challenge():
+    return PlainTextResponse("Z3u9Lb9je2J_epZWgGAqUWcinsbzWW8gSZJXJdI5prM")
+
 
 @app.post("/api/create-session")
 async def create_session(request: Request) -> JSONResponse:
