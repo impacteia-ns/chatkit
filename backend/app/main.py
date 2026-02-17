@@ -280,4 +280,19 @@ async def mcp_root():
             }
         ]
     }
+from fastapi import Body
+
+@app.post("/mcp/execute")
+async def mcp_execute(payload: dict = Body(...)):
+    tool_name = payload.get("name")
+
+    if tool_name == "health_check":
+        return {
+            "status": "ok",
+            "message": "MCP server is running"
+        }
+
+    return {
+        "error": f"Tool '{tool_name}' not found"
+    }
 
